@@ -1,0 +1,52 @@
+{
+  "name": "pi-edenai",
+  "version": "0.1.0",
+  "description": "Eden AI provider for Pi — 700+ models from every major provider (OpenAI, Anthropic, Google, Mistral, DeepSeek, …) behind one OpenAI-compatible, EU-hosted API, with live model discovery.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Eden AI <support@edenai.co>",
+  "homepage": "https://github.com/edenai/pi-edenai#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edenai/pi-edenai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edenai/pi-edenai/issues"
+  },
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-provider",
+    "edenai",
+    "eden-ai",
+    "llm",
+    "openai-compatible",
+    "ai-gateway",
+    "eu",
+    "gdpr"
+  ],
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "tsx tests/unit.test.ts",
+    "test:e2e": "tsx tests/e2e/live.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
