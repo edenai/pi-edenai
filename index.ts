@@ -54,7 +54,7 @@ const FETCH_TIMEOUT_MS = 15_000;
 // Types
 // ---------------------------------------------------------------------------
 
-/** Shape of a single entry in Eden AI's `GET /v3/models` response. */
+/** One endpoint (`provider/model`) of Eden AI's `GET /v3/models` catalog. */
 interface EdenModel {
 	id: string;
 	owned_by?: string;
@@ -72,9 +72,15 @@ interface EdenModel {
 	alias_of?: string | null;
 }
 
+/** One entry of `GET /v3/models?view=models`: a model grouping its endpoints. */
+interface EdenModelGroup {
+	id: string;
+	endpoints?: EdenModel[] | null;
+}
+
 interface EdenModelsResponse {
 	object?: string;
-	data?: EdenModel[];
+	data?: EdenModelGroup[];
 }
 
 /** Subset of pi's ProviderModelConfig that we populate. */
@@ -136,12 +142,19 @@ export function mapEdenModel(m: EdenModel, maxTokens: number = DEFAULT_MAX_TOKEN
 	};
 }
 
-/** Map + optional EU filter over a raw Eden `/models` payload. */
+/** Flatten, map and optionally EU-filter a raw Eden `/models?view=models` payload. */
 export function mapCatalog(
 	payload: EdenModelsResponse,
 	opts: { euOnly?: boolean; maxTokens?: number } = {},
 ): PiModel[] {
-	const raw = Array.isArray(payload.data) ? payload.data : [];
+	const groups = Array.isArray(payload.data) ? payload.data : [];
+	// pi saves the exact model id and needs per-endpoint limits and prices, so it
+	// lists endpoints. Alias groups (`~...`) repeat their target's endpoints.
+	const byId = new Map<string, EdenModel>();
+	for (const e of groups.flatMap((g) => g.endpoints ?? [])) {
+		if (!byId.has(e.id)) byId.set(e.id, e);
+	}
+	const raw = [...byId.values()];
 	const filtered = opts.euOnly ? raw.filter(isEuModel) : raw;
 	const mt = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
 	return filtered.map((m) => mapEdenModel(m, mt));
@@ -155,7 +168,7 @@ async function fetchCatalog(baseUrl: string, apiKey: string, euOnly: boolean): P
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 	try {
-		const res = await fetch(`${baseUrl}/models`, {
+		const res = await fetch(`${baseUrl}/models?view=models`, {
 			headers: { Authorization: `Bearer ${apiKey}` },
 			signal: controller.signal,
 		});

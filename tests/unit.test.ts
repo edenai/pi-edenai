@@ -14,33 +14,48 @@ import {
 	resolveBaseUrl,
 } from "../index.ts";
 
-// A trimmed sample mirroring the real GET /v3/models response shape.
+// Endpoint entries, as nested under each model by GET /v3/models?view=models.
+const OPENAI_GPT_4O = {
+	id: "openai/gpt-4o",
+	owned_by: "openai",
+	context_length: 128000,
+	capabilities: { input_modalities: ["text", "image"], supports_reasoning: false },
+	pricing: { input_cost_per_token: 2.5e-6, output_cost_per_token: 10e-6 },
+	regions: [{ code: "us", name: "United States" }, { code: "eu", name: "Europe" }],
+};
+const AZURE_GPT_4O = {
+	id: "azure/gpt-4o",
+	owned_by: "azure",
+	context_length: 128000,
+	capabilities: { input_modalities: ["text", "image"], supports_reasoning: false },
+	pricing: { input_cost_per_token: 2.5e-6, output_cost_per_token: 10e-6 },
+	regions: [{ code: "us", name: "United States" }],
+};
+const JAMBA = {
+	id: "amazon/ai21.jamba-1-5-large-v1:0",
+	owned_by: "amazon",
+	context_length: 256000,
+	capabilities: { input_modalities: ["text"], supports_reasoning: false },
+	pricing: { input_cost_per_token: 2e-6, output_cost_per_token: 8e-6 },
+	regions: [{ code: "eu", name: "Europe" }],
+};
+const US_ONLY = {
+	id: "someprovider/us-only-model",
+	context_length: 8192,
+	capabilities: { input_modalities: ["text", "audio", "video"], supports_reasoning: true },
+	pricing: { input_cost_per_token: 1e-6, output_cost_per_token: 3e-6 },
+	regions: [{ code: "us", name: "United States" }],
+};
+
+// A trimmed sample mirroring the real GET /v3/models?view=models response shape.
 const SAMPLE = {
 	object: "list",
 	data: [
-		{
-			id: "openai/gpt-4o",
-			owned_by: "openai",
-			context_length: 128000,
-			capabilities: { input_modalities: ["text", "image"], supports_reasoning: false },
-			pricing: { input_cost_per_token: 2.5e-6, output_cost_per_token: 10e-6 },
-			regions: [{ code: "us", name: "United States" }, { code: "eu", name: "Europe" }],
-		},
-		{
-			id: "amazon/ai21.jamba-1-5-large-v1:0",
-			owned_by: "amazon",
-			context_length: 256000,
-			capabilities: { input_modalities: ["text"], supports_reasoning: false },
-			pricing: { input_cost_per_token: 2e-6, output_cost_per_token: 8e-6 },
-			regions: [{ code: "eu", name: "Europe" }],
-		},
-		{
-			id: "someprovider/us-only-model",
-			context_length: 8192,
-			capabilities: { input_modalities: ["text", "audio", "video"], supports_reasoning: true },
-			pricing: { input_cost_per_token: 1e-6, output_cost_per_token: 3e-6 },
-			regions: [{ code: "us", name: "United States" }],
-		},
+		{ id: "gpt-4o", endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O] },
+		{ id: "ai21.jamba-1-5-large-v1:0", endpoints: [JAMBA] },
+		{ id: "us-only-model", endpoints: [US_ONLY] },
+		{ id: "~gpt-latest", alias_of: "gpt-4o", endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O] },
+		{ id: "policy/x", endpoints: [] },
 	],
 };
 
@@ -52,7 +67,7 @@ function run(name: string, fn: () => void) {
 console.log("pi-edenai tests");
 
 run("mapEdenModel converts per-token pricing to $/million", () => {
-	const m = mapEdenModel(SAMPLE.data[0]);
+	const m = mapEdenModel(OPENAI_GPT_4O);
 	assert.equal(m.id, "openai/gpt-4o");
 	assert.equal(m.cost.input, 2.5);
 	assert.equal(m.cost.output, 10);
@@ -62,22 +77,28 @@ run("mapEdenModel converts per-token pricing to $/million", () => {
 });
 
 run("mapEdenModel drops unsupported input modalities and keeps text fallback", () => {
-	const m = mapEdenModel(SAMPLE.data[2]);
+	const m = mapEdenModel(US_ONLY);
 	assert.deepEqual(m.input, ["text"]); // audio/video dropped
 	assert.equal(m.reasoning, true);
 });
 
 run("mapEdenModel applies the maxTokens argument", () => {
-	const m = mapEdenModel(SAMPLE.data[0], 4096);
+	const m = mapEdenModel(OPENAI_GPT_4O, 4096);
 	assert.equal(m.maxTokens, 4096);
 });
 
-run("mapCatalog maps every model by default", () => {
-	const all = mapCatalog(SAMPLE);
-	assert.equal(all.length, 3);
+run("mapCatalog lists each endpoint once, by provider id", () => {
+	const ids = mapCatalog(SAMPLE).map((m) => m.id).sort();
+	// The ~ alias repeats gpt-4o's endpoints and policy/x has none.
+	assert.deepEqual(ids, [
+		"amazon/ai21.jamba-1-5-large-v1:0",
+		"azure/gpt-4o",
+		"openai/gpt-4o",
+		"someprovider/us-only-model",
+	]);
 });
 
-run("mapCatalog euOnly keeps only EU-region models", () => {
+run("mapCatalog euOnly keeps only EU-region endpoints", () => {
 	const eu = mapCatalog(SAMPLE, { euOnly: true });
 	const ids = eu.map((m) => m.id).sort();
 	assert.deepEqual(ids, ["amazon/ai21.jamba-1-5-large-v1:0", "openai/gpt-4o"]);
@@ -88,8 +109,8 @@ run("mapCatalog tolerates a missing data array", () => {
 });
 
 run("isEuModel detects EU region case-insensitively", () => {
-	assert.equal(isEuModel(SAMPLE.data[0]), true);
-	assert.equal(isEuModel(SAMPLE.data[2]), false);
+	assert.equal(isEuModel(OPENAI_GPT_4O), true);
+	assert.equal(isEuModel(US_ONLY), false);
 });
 
 run("resolveBaseUrl defaults to the global endpoint", () => {
