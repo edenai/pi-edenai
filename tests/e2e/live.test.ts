@@ -21,11 +21,13 @@ if (!KEY) {
 
 console.log(`pi-edenai e2e (${BASE})`);
 
-// 1) Live catalog: GET /models -> maps to well-formed pi models.
-const modelsRes = await fetch(`${BASE}/models`, { headers: { Authorization: `Bearer ${KEY}` } });
-assert.equal(modelsRes.status, 200, "GET /models should return 200");
+// 1) Live catalog: GET /models?view=models -> mapCatalog flattens the endpoints
+//    into well-formed pi models.
+const modelsRes = await fetch(`${BASE}/models?view=models`, { headers: { Authorization: `Bearer ${KEY}` } });
+assert.equal(modelsRes.status, 200, "GET /models?view=models should return 200");
 const payload = await modelsRes.json();
 const catalog = mapCatalog(payload as never);
+assert.equal(new Set(catalog.map((m) => m.id)).size, catalog.length, "ids should be unique");
 assert.ok(catalog.length > 100, `expected a large catalog, got ${catalog.length}`);
 assert.equal(catalog.filter((m) => !m.id.includes("/")).length, 0, "every id should be provider/model");
 assert.equal(
