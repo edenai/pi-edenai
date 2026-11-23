@@ -48,14 +48,21 @@ const US_ONLY = {
 	regions: [{ code: "us", name: "United States" }],
 };
 
-// A trimmed sample mirroring the real GET /v3/models?view=models response shape.
+// A trimmed sample mirroring the real GET /v3/models?view=models response shape: each model
+// carries its own context window, capabilities and pricing beside its endpoints.
 const SAMPLE = {
 	object: "list",
 	data: [
-		{ id: "gpt-4o", endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O] },
-		{ id: "ai21.jamba-1-5-large-v1:0", endpoints: [JAMBA] },
-		{ id: "us-only-model", endpoints: [US_ONLY] },
-		{ id: "~gpt-latest", alias_of: "gpt-4o", endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O] },
+		{ ...OPENAI_GPT_4O, id: "gpt-4o", regions: [], endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O] },
+		{ ...JAMBA, id: "ai21.jamba-1-5-large-v1:0", regions: [], endpoints: [JAMBA] },
+		{ ...US_ONLY, id: "us-only-model", regions: [], endpoints: [US_ONLY] },
+		{
+			...OPENAI_GPT_4O,
+			id: "~gpt-latest",
+			alias_of: "gpt-4o",
+			regions: [],
+			endpoints: [OPENAI_GPT_4O, AZURE_GPT_4O],
+		},
 		{ id: "policy/x", endpoints: [] },
 	],
 };
@@ -88,21 +95,24 @@ run("mapEdenModel applies the maxTokens argument", () => {
 	assert.equal(m.maxTokens, 4096);
 });
 
-run("mapCatalog lists each endpoint once, by provider id", () => {
-	const ids = mapCatalog(SAMPLE).map((m) => m.id).sort();
-	// The ~ alias repeats gpt-4o's endpoints and policy/x has none.
-	assert.deepEqual(ids, [
-		"amazon/ai21.jamba-1-5-large-v1:0",
-		"azure/gpt-4o",
-		"openai/gpt-4o",
-		"someprovider/us-only-model",
+run("mapCatalog lists each model once, by the name provider routing takes", () => {
+	const models = mapCatalog(SAMPLE);
+	// Aliases are names routing takes too; policy/x has no endpoint.
+	assert.deepEqual(models.map((m) => m.id).sort(), [
+		"ai21.jamba-1-5-large-v1:0",
+		"gpt-4o",
+		"us-only-model",
+		"~gpt-latest",
 	]);
+	const gpt = models.find((m) => m.id === "gpt-4o")!;
+	assert.equal(gpt.contextWindow, 128000);
+	assert.equal(gpt.cost.input, 2.5);
 });
 
-run("mapCatalog euOnly keeps only EU-region endpoints", () => {
+run("mapCatalog euOnly keeps the models with an EU-region endpoint", () => {
 	const eu = mapCatalog(SAMPLE, { euOnly: true });
 	const ids = eu.map((m) => m.id).sort();
-	assert.deepEqual(ids, ["amazon/ai21.jamba-1-5-large-v1:0", "openai/gpt-4o"]);
+	assert.deepEqual(ids, ["ai21.jamba-1-5-large-v1:0", "gpt-4o", "~gpt-latest"]);
 });
 
 run("mapCatalog tolerates a missing data array", () => {

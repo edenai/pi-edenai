@@ -2,7 +2,7 @@
 
 **Eden AI provider for [Pi](https://github.com/earendil-works/pi).** One extension gives Pi access to **700+ models** from every major provider — OpenAI, Anthropic, Google, Mistral, DeepSeek, Cohere, Amazon, xAI and more — through a single [Eden AI](https://www.edenai.co/) key and one OpenAI-compatible, **EU-hosted** endpoint.
 
-- **One key, every model.** Switch models with a one-line change using the `provider/model` naming (`anthropic/claude-sonnet-4-5`, `openai/gpt-4o`, `mistral/mistral-large-latest`, …).
+- **One key, every model.** Each model is listed once by the name Eden AI routes (`claude-sonnet-4-5`, `gpt-4o`, `~claude-fable-latest`, …), and provider routing picks the provider for each call. To pin a provider, pass its `provider/model` id with `--model` (`anthropic/claude-sonnet-4-5`).
 - **Live model discovery.** The catalog is fetched from Eden AI's `/v3/models` at startup, so pricing, context window, vision and reasoning support always match what's live on your account. Refresh any time with `/edenai-sync`.
 - **EU data residency.** Point at the EU endpoint and optionally restrict to EU-eligible models for GDPR-sensitive work.
 
@@ -78,7 +78,7 @@ export EDENAI_EU_ONLY="1"
 
 ## How it works
 
-Eden AI speaks the OpenAI Chat Completions protocol, so the extension registers a single provider with `api: "openai-completions"` and lets Pi's built-in OpenAI-compatible path do the rest — no custom streaming code. Models come straight from `GET /v3/models`, mapped to Pi's model config (per-token pricing converted to `$`/million, context window, `text`/`image` input, and reasoning support). If the live catalog can't be reached at startup, a small curated set of current models is registered so the provider still works; `/edenai-sync` then loads the full list.
+Eden AI speaks the OpenAI Chat Completions protocol, so the extension registers a single provider with `api: "openai-completions"` and lets Pi's built-in OpenAI-compatible path do the rest — no custom streaming code. Models come straight from `GET /v3/models?view=models`, one per model Eden AI routes, mapped to Pi's model config (per-token pricing converted to `$`/million, context window, `text`/`image` input, and reasoning support). If the live catalog can't be reached at startup, a small curated set of current models is registered so the provider still works; `/edenai-sync` then loads the full list.
 
 Every model sends Pi's session id with each call as the `x-session-id` header, so Eden AI's Monitoring, and the tracing tools its Trace Export sends to, group a Pi session's calls under Pi's own id. Pi leaves the header out when prompt caching is off (`cacheRetention: "none"`).
 

@@ -23,8 +23,9 @@
  *   export EDENAI_BASE_URL="https://api.eu.edenai.run/v3"
  *   export EDENAI_EU_ONLY="1"
  *
- * Model ids follow Eden AI's `provider/model` convention, e.g.
- *   anthropic/claude-sonnet-4-5, openai/gpt-4o, mistral/mistral-large-latest
+ * Model ids are the names Eden AI routes, e.g. claude-sonnet-4-5 or gpt-4o:
+ * provider routing picks the provider for each call. A `provider/model` id
+ * (anthropic/claude-sonnet-4-5) still works with --model to pin one.
  *
  * SPDX-License-Identifier: MIT
  * Eden AI <support@edenai.co>
@@ -65,7 +66,7 @@ export const SESSION_COMPAT = {
 // Types
 // ---------------------------------------------------------------------------
 
-/** One endpoint (`provider/model`) of Eden AI's `GET /v3/models` catalog. */
+/** One model of Eden AI's `GET /v3/models` catalog, or one of its endpoints (`provider/model`). */
 interface EdenModel {
 	id: string;
 	owned_by?: string;
@@ -83,9 +84,8 @@ interface EdenModel {
 	alias_of?: string | null;
 }
 
-/** One entry of `GET /v3/models?view=models`: a model grouping its endpoints. */
-interface EdenModelGroup {
-	id: string;
+/** One entry of `GET /v3/models?view=models`: a model, with the endpoints routing picks from. */
+interface EdenModelGroup extends EdenModel {
 	endpoints?: EdenModel[] | null;
 }
 
@@ -153,22 +153,24 @@ export function mapEdenModel(m: EdenModel, maxTokens: number = DEFAULT_MAX_TOKEN
 	};
 }
 
-/** Flatten, map and optionally EU-filter a raw Eden `/models?view=models` payload. */
+/**
+ * One pi model per model Eden AI routes, from a raw `/models?view=models` payload: its name
+ * (`claude-opus-5.5`, or an alias such as `~claude-fable-latest`), which provider routing sends
+ * to one of its endpoints, with the model's own context window, pricing and capabilities. A
+ * model with no endpoint is left out; EU-only keeps a model with an EU-region endpoint.
+ */
 export function mapCatalog(
 	payload: EdenModelsResponse,
 	opts: { euOnly?: boolean; maxTokens?: number } = {},
 ): PiModel[] {
-	const groups = Array.isArray(payload.data) ? payload.data : [];
-	// pi saves the exact model id and needs per-endpoint limits and prices, so it
-	// lists endpoints. Alias groups (`~...`) repeat their target's endpoints.
-	const byId = new Map<string, EdenModel>();
-	for (const e of groups.flatMap((g) => g.endpoints ?? [])) {
-		if (!byId.has(e.id)) byId.set(e.id, e);
-	}
-	const raw = [...byId.values()];
-	const filtered = opts.euOnly ? raw.filter(isEuModel) : raw;
+	const groups = (Array.isArray(payload.data) ? payload.data : []).filter(
+		(g) => g.endpoints?.length,
+	);
+	const kept = opts.euOnly
+		? groups.filter((g) => (g.endpoints ?? []).some(isEuModel))
+		: groups;
 	const mt = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
-	return filtered.map((m) => mapEdenModel(m, mt));
+	return kept.map((g) => mapEdenModel(g, mt));
 }
 
 // ---------------------------------------------------------------------------
