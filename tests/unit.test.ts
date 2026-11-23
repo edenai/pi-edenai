@@ -11,6 +11,7 @@ import {
 	isEuModel,
 	mapCatalog,
 	mapEdenModel,
+	providerConfig,
 	resolveBaseUrl,
 } from "../index.ts";
 
@@ -136,6 +137,17 @@ run("FALLBACK_MODELS are well-formed", () => {
 		assert.ok(m.maxTokens > 0);
 		assert.ok(m.cost.input >= 0 && m.cost.output >= 0);
 		assert.ok(m.input.length > 0);
+	}
+});
+
+run("every registered model sends Pi's session id as x-session-id", () => {
+	const config = providerConfig(DEFAULT_BASE_URL, FALLBACK_MODELS);
+	assert.equal(config.models.length, FALLBACK_MODELS.length);
+	for (const m of config.models) {
+		assert.deepEqual(m.compat, {
+			sendSessionAffinityHeaders: true,
+			sessionAffinityFormat: "openrouter",
+		});
 	}
 });
 

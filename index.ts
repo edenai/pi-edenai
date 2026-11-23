@@ -50,6 +50,17 @@ export const EU_BASE_URL = "https://api.eu.edenai.run/v3";
 const DEFAULT_MAX_TOKENS = 8192;
 const FETCH_TIMEOUT_MS = 15_000;
 
+/**
+ * Pi sends its session id with each call as `x-session-id` (the header it uses for
+ * OpenRouter), which Eden AI reads as the call's session: Monitoring and the tools Trace
+ * Export sends to group a Pi session's calls under Pi's own id. Pi leaves it out when
+ * prompt caching is off (`cacheRetention: "none"`).
+ */
+export const SESSION_COMPAT = {
+	sendSessionAffinityHeaders: true,
+	sessionAffinityFormat: "openrouter",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -247,12 +258,17 @@ export default async function (pi: ExtensionAPI) {
 	});
 }
 
-function register(pi: ExtensionAPI, baseUrl: string, models: PiModel[]) {
-	pi.registerProvider(PROVIDER_ID, {
+/** The provider as registered: every model sends Pi's session id (`SESSION_COMPAT`). */
+export function providerConfig(baseUrl: string, models: PiModel[]) {
+	return {
 		name: PROVIDER_NAME,
 		baseUrl,
 		apiKey: "$EDENAI_API_KEY",
-		api: "openai-completions",
-		models,
-	});
+		api: "openai-completions" as const,
+		models: models.map((m) => ({ ...m, compat: SESSION_COMPAT })),
+	};
+}
+
+function register(pi: ExtensionAPI, baseUrl: string, models: PiModel[]) {
+	pi.registerProvider(PROVIDER_ID, providerConfig(baseUrl, models));
 }
