@@ -80,6 +80,8 @@ export EDENAI_EU_ONLY="1"
 
 Eden AI speaks the OpenAI Chat Completions protocol, so the extension registers a single provider with `api: "openai-completions"` and lets Pi's built-in OpenAI-compatible path do the rest — no custom streaming code. Models come straight from `GET /v3/models`, mapped to Pi's model config (per-token pricing converted to `$`/million, context window, `text`/`image` input, and reasoning support). If the live catalog can't be reached at startup, a small curated set of current models is registered so the provider still works; `/edenai-sync` then loads the full list.
 
+Every model sends Pi's session id with each call as the `x-session-id` header, so Eden AI's Monitoring, and the tracing tools its Trace Export sends to, group a Pi session's calls under Pi's own id. Pi leaves the header out when prompt caching is off (`cacheRetention: "none"`).
+
 ## Develop / test
 
 ```bash
