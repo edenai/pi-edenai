@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.1]
+
+- The built-in fallback models, used when the live catalog cannot be reached at startup, are now the `~` aliases (`~claude-sonnet-latest`, `~gpt-mini-latest`, `~gemini-pro-latest`...), which follow the newest model of each family. One of the old ones, `anthropic/claude-sonnet-4-5`, was no longer served.
+
 ## [0.1.0]
 
 First release on npm.

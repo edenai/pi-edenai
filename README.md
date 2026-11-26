@@ -2,7 +2,7 @@
 
 **Eden AI provider for [Pi](https://github.com/earendil-works/pi).** One extension gives Pi access to **700+ models** from every major provider — OpenAI, Anthropic, Google, Mistral, DeepSeek, Cohere, Amazon, xAI and more — through a single [Eden AI](https://www.edenai.co/) key and one OpenAI-compatible, **EU-hosted** endpoint.
 
-- **One key, every model.** Each model is listed once by the name Eden AI routes (`claude-sonnet-4-5`, `gpt-4o`, `~claude-fable-latest`, …), and provider routing picks the provider for each call. To pin a provider, pass its `provider/model` id with `--model` (`anthropic/claude-sonnet-4-5`).
+- **One key, every model.** Each model is listed once by the name Eden AI routes (`~claude-sonnet-latest`, `~gpt-mini-latest`, `~gemini-pro-latest`...), and provider routing picks the provider for each call. Names starting with `~` follow the newest model of a family. To pin a provider, pass its `provider/model` id with `--model` (`anthropic/claude-sonnet-latest`).
 - **Live model discovery.** The catalog is fetched from Eden AI's `/v3/models` at startup, so pricing, context window, vision and reasoning support always match what's live on your account. Refresh any time with `/edenai-sync`.
 - **EU data residency.** Point at the EU endpoint and optionally restrict to EU-eligible models for GDPR-sensitive work.
 
