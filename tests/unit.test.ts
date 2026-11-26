@@ -13,6 +13,7 @@ import {
 	mapEdenModel,
 	providerConfig,
 	resolveBaseUrl,
+	resolveMaxTokens,
 } from "../index.ts";
 
 // Endpoint entries, as nested under each model by GET /v3/models?view=models.
@@ -93,6 +94,25 @@ run("mapEdenModel drops unsupported input modalities and keeps text fallback", (
 run("mapEdenModel applies the maxTokens argument", () => {
 	const m = mapEdenModel(OPENAI_GPT_4O, 4096);
 	assert.equal(m.maxTokens, 4096);
+});
+
+run("mapEdenModel takes the model's own max_output_tokens", () => {
+	const opus = { ...OPENAI_GPT_4O, context_length: 1_000_000, max_output_tokens: 128_000 };
+	assert.equal(mapEdenModel(opus).maxTokens, 128_000);
+	assert.equal(mapEdenModel(opus, 4096).maxTokens, 4096); // EDENAI_MAX_TOKENS still wins
+});
+
+run("mapEdenModel without a stated limit gives a reasoning model more room", () => {
+	assert.equal(mapEdenModel(OPENAI_GPT_4O).maxTokens, 8192);
+	const thinker = { ...JAMBA, capabilities: { supports_reasoning: true } };
+	assert.equal(mapEdenModel(thinker).maxTokens, 32_768);
+	assert.equal(mapEdenModel(US_ONLY).maxTokens, 8192); // capped at its 8,192 window
+});
+
+run("resolveMaxTokens is unset unless EDENAI_MAX_TOKENS is a positive integer", () => {
+	assert.equal(resolveMaxTokens({} as NodeJS.ProcessEnv), undefined);
+	assert.equal(resolveMaxTokens({ EDENAI_MAX_TOKENS: "0" } as NodeJS.ProcessEnv), undefined);
+	assert.equal(resolveMaxTokens({ EDENAI_MAX_TOKENS: "64000" } as NodeJS.ProcessEnv), 64000);
 });
 
 run("mapCatalog lists each model once, by the name provider routing takes", () => {

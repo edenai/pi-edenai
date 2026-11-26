@@ -74,7 +74,7 @@ export EDENAI_EU_ONLY="1"
 | `EDENAI_API_KEY` | — | Your Eden AI API key (required). |
 | `EDENAI_BASE_URL` | `https://api.edenai.run/v3` | Override the endpoint (e.g. the EU endpoint). |
 | `EDENAI_EU_ONLY` | unset | When set, use the EU endpoint by default and register only EU-region models. |
-| `EDENAI_MAX_TOKENS` | `8192` | Default max output tokens (Eden's catalog doesn't expose a per-model value). |
+| `EDENAI_MAX_TOKENS` | unset | Max output tokens for every model. Unset, each model takes its own `max_output_tokens` from the catalog (the smallest among its providers), else 32,768 for a reasoning model and 8,192 otherwise. |
 
 ## How it works
 

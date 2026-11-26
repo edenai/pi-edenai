@@ -43,12 +43,14 @@ export const DEFAULT_BASE_URL = "https://api.edenai.run/v3";
 export const EU_BASE_URL = "https://api.eu.edenai.run/v3";
 
 /**
- * Eden AI's `/models` response does not expose a per-model max output token
- * limit, so we apply a safe default cap. Override globally with
- * EDENAI_MAX_TOKENS; individual models can also be overridden via pi's
- * models.json.
+ * Output limits for a model whose catalog entry states none. Each model otherwise
+ * takes its own `max_output_tokens`: the smallest limit among the providers that
+ * serve it, so it is accepted whichever one routing picks. A reasoning model gets
+ * more room, as its thinking counts toward the limit. EDENAI_MAX_TOKENS overrides
+ * every model; pi's models.json overrides one.
  */
 const DEFAULT_MAX_TOKENS = 8192;
+const DEFAULT_REASONING_MAX_TOKENS = 32_768;
 const FETCH_TIMEOUT_MS = 15_000;
 
 /**
@@ -71,6 +73,7 @@ interface EdenModel {
 	id: string;
 	owned_by?: string;
 	context_length?: number | null;
+	max_output_tokens?: number | null;
 	capabilities?: {
 		input_modalities?: string[];
 		supports_reasoning?: boolean;
@@ -109,10 +112,22 @@ export interface PiModel {
 // Pure helpers (unit-tested in test.ts)
 // ---------------------------------------------------------------------------
 
-function resolveMaxTokens(env: NodeJS.ProcessEnv = process.env): number {
+/** EDENAI_MAX_TOKENS when set to a positive integer, else undefined (each model's own). */
+export function resolveMaxTokens(env: NodeJS.ProcessEnv = process.env): number | undefined {
 	const raw = env.EDENAI_MAX_TOKENS;
 	const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
-	return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_TOKENS;
+	return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/** The output limit pi sends for `m`: the override, else the model's own, else a default. */
+export function modelMaxTokens(m: EdenModel, override?: number): number {
+	if (override) return override;
+	const own = m.max_output_tokens;
+	if (own && own > 0) return own;
+	const fallback = m.capabilities?.supports_reasoning
+		? DEFAULT_REASONING_MAX_TOKENS
+		: DEFAULT_MAX_TOKENS;
+	return m.context_length ? Math.min(fallback, m.context_length) : fallback;
 }
 
 /** Resolve the base URL from the environment (EU endpoint when EU-only). */
@@ -128,7 +143,7 @@ export function isEuModel(m: EdenModel): boolean {
 }
 
 /** Map one Eden AI catalog entry to a pi model config. */
-export function mapEdenModel(m: EdenModel, maxTokens: number = DEFAULT_MAX_TOKENS): PiModel {
+export function mapEdenModel(m: EdenModel, maxTokens?: number): PiModel {
 	const cap = m.capabilities ?? {};
 	// pi only understands "text" and "image" input; drop audio/video/document.
 	const input = (cap.input_modalities ?? ["text"]).filter(
@@ -149,7 +164,7 @@ export function mapEdenModel(m: EdenModel, maxTokens: number = DEFAULT_MAX_TOKEN
 			cacheWrite: 0,
 		},
 		contextWindow: m.context_length ?? 128_000,
-		maxTokens,
+		maxTokens: modelMaxTokens(m, maxTokens),
 	};
 }
 
@@ -169,8 +184,7 @@ export function mapCatalog(
 	const kept = opts.euOnly
 		? groups.filter((g) => (g.endpoints ?? []).some(isEuModel))
 		: groups;
-	const mt = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
-	return kept.map((g) => mapEdenModel(g, mt));
+	return kept.map((g) => mapEdenModel(g, opts.maxTokens));
 }
 
 // ---------------------------------------------------------------------------
