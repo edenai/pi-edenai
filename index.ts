@@ -130,6 +130,16 @@ export function modelMaxTokens(m: EdenModel, override?: number): number {
 	return m.context_length ? Math.min(fallback, m.context_length) : fallback;
 }
 
+/** The key's variable: `EDENAI_API_KEY`, else `EDEN_AI_API_KEY` (the name Eden AI's docs used). */
+export function keyVariable(env: NodeJS.ProcessEnv = process.env): string {
+	if (!env.EDENAI_API_KEY?.trim() && env.EDEN_AI_API_KEY?.trim()) return "EDEN_AI_API_KEY";
+	return "EDENAI_API_KEY";
+}
+
+function readKey(): string | undefined {
+	return process.env[keyVariable()]?.trim() || undefined;
+}
+
 /** Resolve the base URL from the environment (EU endpoint when EU-only). */
 export function resolveBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
 	const override = env.EDENAI_BASE_URL?.trim();
@@ -236,7 +246,7 @@ export const FALLBACK_MODELS: PiModel[] = [
 export default async function (pi: ExtensionAPI) {
 	const baseUrl = resolveBaseUrl();
 	const euOnly = Boolean(process.env.EDENAI_EU_ONLY);
-	const apiKey = process.env.EDENAI_API_KEY?.trim();
+	const apiKey = readKey();
 
 	let models: PiModel[] = FALLBACK_MODELS;
 	if (apiKey) {
@@ -253,9 +263,9 @@ export default async function (pi: ExtensionAPI) {
 	pi.registerCommand("edenai-sync", {
 		description: "Refresh the Eden AI model catalog from the live API",
 		handler: async (_args, ctx) => {
-			const key = process.env.EDENAI_API_KEY?.trim();
+			const key = readKey();
 			if (!key) {
-				ctx.ui.notify("EDENAI_API_KEY is not set — set it and run /edenai-sync again.", "error");
+				ctx.ui.notify("EDENAI_API_KEY is not set (EDEN_AI_API_KEY works too). Set it and run /edenai-sync again.", "error");
 				return;
 			}
 			try {
@@ -279,7 +289,7 @@ export function providerConfig(baseUrl: string, models: PiModel[]) {
 	return {
 		name: PROVIDER_NAME,
 		baseUrl,
-		apiKey: "$EDENAI_API_KEY",
+		apiKey: `$${keyVariable()}`,
 		api: "openai-completions" as const,
 		models: models.map((m) => ({ ...m, compat: SESSION_COMPAT })),
 	};

@@ -14,6 +14,7 @@
     "url": "https://github.com/edenai/pi-edenai/issues"
   },
   "keywords": [
+    "pi-package",
     "pi",
     "pi-extension",
     "pi-provider",
@@ -28,6 +29,7 @@
   "files": [
     "index.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

@@ -9,6 +9,7 @@ import {
 	EU_BASE_URL,
 	FALLBACK_MODELS,
 	isEuModel,
+	keyVariable,
 	mapCatalog,
 	mapEdenModel,
 	providerConfig,
@@ -179,6 +180,15 @@ run("every registered model sends Pi's session id as x-session-id", () => {
 			sessionAffinityFormat: "openrouter",
 		});
 	}
+});
+
+run("reads the key from EDENAI_API_KEY, else EDEN_AI_API_KEY", () => {
+	assert.equal(keyVariable({} as NodeJS.ProcessEnv), "EDENAI_API_KEY");
+	assert.equal(keyVariable({ EDEN_AI_API_KEY: "k" } as NodeJS.ProcessEnv), "EDEN_AI_API_KEY");
+	assert.equal(
+		keyVariable({ EDENAI_API_KEY: "a", EDEN_AI_API_KEY: "b" } as NodeJS.ProcessEnv),
+		"EDENAI_API_KEY",
+	);
 });
 
 console.log("all tests passed");
