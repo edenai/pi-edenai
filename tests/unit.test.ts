@@ -163,7 +163,7 @@ run("resolveBaseUrl honors an explicit override and trims trailing slash", () =>
 run("FALLBACK_MODELS are well-formed", () => {
 	assert.ok(FALLBACK_MODELS.length >= 8);
 	for (const m of FALLBACK_MODELS) {
-		assert.ok(m.id.includes("/"), `id should be provider/model: ${m.id}`);
+		assert.match(m.id, /^~[a-z0-9-]+-latest$/, `id should be a ~latest alias: ${m.id}`);
 		assert.ok(m.contextWindow > 0);
 		assert.ok(m.maxTokens > 0);
 		assert.ok(m.cost.input >= 0 && m.cost.output >= 0);

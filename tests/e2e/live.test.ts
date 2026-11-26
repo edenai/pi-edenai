@@ -9,7 +9,7 @@
  *   EDENAI_API_KEY=... npx tsx tests/e2e/live.test.ts
  */
 import assert from "node:assert/strict";
-import { mapCatalog } from "../../index.ts";
+import { FALLBACK_MODELS, mapCatalog } from "../../index.ts";
 
 const KEY = process.env.EDENAI_API_KEY?.trim();
 const BASE = (process.env.EDENAI_BASE_URL?.trim() || "https://api.edenai.run/v3").replace(/\/+$/, "");
@@ -27,9 +27,22 @@ const modelsRes = await fetch(`${BASE}/models?view=models`, { headers: { Authori
 assert.equal(modelsRes.status, 200, "GET /models?view=models should return 200");
 const payload = await modelsRes.json();
 const catalog = mapCatalog(payload as never);
-assert.equal(new Set(catalog.map((m) => m.id)).size, catalog.length, "ids should be unique");
+const live = new Map(catalog.map((m) => [m.id, m]));
+assert.equal(live.size, catalog.length, "ids should be unique");
 assert.ok(catalog.length > 100, `expected a large catalog, got ${catalog.length}`);
-assert.equal(catalog.filter((m) => !m.id.includes("/")).length, 0, "every id should be provider/model");
+// The fallback should be what the live catalog maps to today; a `~` alias that moved to a newer
+// model changes its numbers. On a mismatch, the message carries the fresh entry to paste.
+const round = (n: number) => Math.round(n * 1e4) / 1e4;
+const shape = (m: (typeof catalog)[number]) => ({
+	...m,
+	input: [...m.input].sort(),
+	cost: { ...m.cost, input: round(m.cost.input), output: round(m.cost.output) },
+});
+for (const m of FALLBACK_MODELS) {
+	const fresh = live.get(m.id);
+	assert.ok(fresh, `fallback model ${m.id} is no longer in the live catalog`);
+	assert.deepEqual(shape(m), shape(fresh), `fallback ${m.id} is stale; live: ${JSON.stringify(shape(fresh))}`);
+}
 assert.equal(
 	catalog.filter((m) => Number.isNaN(m.cost.input) || Number.isNaN(m.cost.output)).length,
 	0,
@@ -43,7 +56,7 @@ const chatRes = await fetch(`${BASE}/chat/completions`, {
 	method: "POST",
 	headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
 	body: JSON.stringify({
-		model: "openai/gpt-4o-mini",
+		model: "~gpt-mini-latest",
 		messages: [{ role: "user", content: "Reply with exactly: pi-edenai ok" }],
 		max_tokens: 20,
 	}),

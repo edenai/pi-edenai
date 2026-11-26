@@ -23,9 +23,10 @@
  *   export EDENAI_BASE_URL="https://api.eu.edenai.run/v3"
  *   export EDENAI_EU_ONLY="1"
  *
- * Model ids are the names Eden AI routes, e.g. claude-sonnet-4-5 or gpt-4o:
- * provider routing picks the provider for each call. A `provider/model` id
- * (anthropic/claude-sonnet-4-5) still works with --model to pin one.
+ * Model ids are the names Eden AI routes, e.g. ~claude-sonnet-latest or
+ * ~gpt-mini-latest: provider routing picks the provider for each call. A
+ * `provider/model` id (anthropic/claude-sonnet-latest) still works with --model
+ * to pin one.
  *
  * SPDX-License-Identifier: MIT
  * Eden AI <support@edenai.co>
@@ -220,23 +221,25 @@ async function fetchCatalog(baseUrl: string, apiKey: string, euOnly: boolean): P
 }
 
 // ---------------------------------------------------------------------------
-// Curated fallback (verified against the live catalog; used only when live
-// discovery fails at startup). Costs are $ per million tokens.
+// Curated fallback, used only when live discovery fails at startup: the `~`
+// aliases, which follow the newest model of each family, as the live catalog
+// maps them (the e2e test fails when one is stale). Costs are $ per million tokens.
 // ---------------------------------------------------------------------------
 
 export const FALLBACK_MODELS: PiModel[] = [
-	{ id: "anthropic/claude-opus-4-5", name: "anthropic/claude-opus-4-5", reasoning: true, input: ["text", "image"], cost: { input: 5, output: 25, cacheRead: 0, cacheWrite: 0 }, contextWindow: 200_000, maxTokens: 32_000 },
-	{ id: "anthropic/claude-sonnet-4-5", name: "anthropic/claude-sonnet-4-5", reasoning: true, input: ["text", "image"], cost: { input: 3, output: 15, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_000_000, maxTokens: 64_000 },
-	{ id: "anthropic/claude-haiku-4-5", name: "anthropic/claude-haiku-4-5", reasoning: true, input: ["text", "image"], cost: { input: 1, output: 5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 200_000, maxTokens: 32_000 },
-	{ id: "openai/gpt-4o", name: "openai/gpt-4o", reasoning: false, input: ["text", "image"], cost: { input: 2.5, output: 10, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128_000, maxTokens: 16_384 },
-	{ id: "openai/gpt-4o-mini", name: "openai/gpt-4o-mini", reasoning: false, input: ["text", "image"], cost: { input: 0.15, output: 0.6, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128_000, maxTokens: 16_384 },
-	{ id: "google/gemini-2.5-pro", name: "google/gemini-2.5-pro", reasoning: true, input: ["text", "image"], cost: { input: 1.25, output: 10, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 65_536 },
-	{ id: "google/gemini-2.5-flash", name: "google/gemini-2.5-flash", reasoning: true, input: ["text", "image"], cost: { input: 0.3, output: 2.5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 65_536 },
-	{ id: "mistral/mistral-large-latest", name: "mistral/mistral-large-latest", reasoning: false, input: ["text", "image"], cost: { input: 2, output: 6, cacheRead: 0, cacheWrite: 0 }, contextWindow: 262_144, maxTokens: 8192 },
-	{ id: "mistral/codestral-latest", name: "mistral/codestral-latest", reasoning: false, input: ["text"], cost: { input: 1, output: 3, cacheRead: 0, cacheWrite: 0 }, contextWindow: 256_000, maxTokens: 8192 },
-	{ id: "deepseek/deepseek-v4-pro", name: "deepseek/deepseek-v4-pro", reasoning: true, input: ["text"], cost: { input: 0.435, output: 0.87, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 8192 },
-	{ id: "deepseek/deepseek-chat", name: "deepseek/deepseek-chat", reasoning: false, input: ["text"], cost: { input: 0.28, output: 0.42, cacheRead: 0, cacheWrite: 0 }, contextWindow: 131_072, maxTokens: 8192 },
-	{ id: "xai/grok-3", name: "xai/grok-3", reasoning: false, input: ["text"], cost: { input: 3, output: 15, cacheRead: 0, cacheWrite: 0 }, contextWindow: 131_072, maxTokens: 8192 },
+	{ id: "~claude-sonnet-latest", name: "~claude-sonnet-latest", reasoning: true, input: ["text", "image"], cost: { input: 2, output: 10, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_000_000, maxTokens: 128_000 },
+	{ id: "~claude-opus-latest", name: "~claude-opus-latest", reasoning: true, input: ["text", "image"], cost: { input: 4, output: 20, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_000_000, maxTokens: 128_000 },
+	{ id: "~claude-haiku-latest", name: "~claude-haiku-latest", reasoning: true, input: ["text", "image"], cost: { input: 0.1, output: 0.5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_000_000, maxTokens: 128_000 },
+	{ id: "~gpt-sol-latest", name: "~gpt-sol-latest", reasoning: true, input: ["text", "image"], cost: { input: 2, output: 10, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_050_000, maxTokens: 128_000 },
+	{ id: "~gpt-terra-latest", name: "~gpt-terra-latest", reasoning: true, input: ["text", "image"], cost: { input: 1, output: 5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_050_000, maxTokens: 128_000 },
+	{ id: "~gpt-mini-latest", name: "~gpt-mini-latest", reasoning: true, input: ["text", "image"], cost: { input: 0.75, output: 4.5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 400_000, maxTokens: 128_000 },
+	{ id: "~gemini-pro-latest", name: "~gemini-pro-latest", reasoning: true, input: ["text", "image"], cost: { input: 2, output: 10, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 32_768 },
+	{ id: "~gemini-flash-latest", name: "~gemini-flash-latest", reasoning: true, input: ["text", "image"], cost: { input: 1.5, output: 7.5, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 65_536 },
+	{ id: "~deepseek-pro-latest", name: "~deepseek-pro-latest", reasoning: true, input: ["text"], cost: { input: 0.429, output: 1.287, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 64_000 },
+	{ id: "~deepseek-flash-latest", name: "~deepseek-flash-latest", reasoning: true, input: ["text", "image"], cost: { input: 0.0975, output: 0.39, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 32_768 },
+	{ id: "~kimi-latest", name: "~kimi-latest", reasoning: true, input: ["text", "image"], cost: { input: 1.95, output: 9.75, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 64_000 },
+	{ id: "~glm-latest", name: "~glm-latest", reasoning: true, input: ["text"], cost: { input: 0.2, output: 0.64, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_048_576, maxTokens: 64_000 },
+	{ id: "~grok-latest", name: "~grok-latest", reasoning: true, input: ["text", "image"], cost: { input: 2, output: 6, cacheRead: 0, cacheWrite: 0 }, contextWindow: 524_288, maxTokens: 32_768 },
 ];
 
 // ---------------------------------------------------------------------------
